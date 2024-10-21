@@ -1,0 +1,6 @@
+#
+# Ansible managed
+#
+{% for item in autofs_mounts %}
+{{ item.name }}        {{ item.source }}:{{ item.path }}
+{% endfor %}

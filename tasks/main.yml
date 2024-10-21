@@ -1,0 +1,72 @@
+# This task assumes that cvmfs role is already installed
+
+
+# Install nfs-utils
+- name: Install nfs-utils
+  yum:
+    name: nfs-utils
+    state: latest
+
+# Create directory /grid-mnt
+- name: Create directory /grid-mnt
+  file:
+    path: /grid-mnt
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+# Remove pre-existing directories if exist
+# First check if paths exist as a directories
+- name: Check status of paths
+  stat:
+    path: "{{ item.path }}"
+  loop: '{{ autofs_mounts }}'
+  register: path_check
+
+# debug print path_check items
+- name: Debug print path_check items
+  debug:
+    msg: "{{ item }}"
+  loop: '{{ path_check.results }}'
+
+# If some do, remove them
+- name: Remove existing paths
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  when: item.stat.isdir is defined and item.stat.isdir is true
+  loop: '{{ path_check.results }}'
+
+# Create symlinks to /grid-mnt
+- name: Create symlinks to /grid-mnt
+  file:
+    path: '{{ item.path }}'
+    state: link
+    src: '/grid-mnt/{{ item.name }}'
+    force: yes
+  loop: '{{ autofs_mounts }}'
+
+# Configure autofs
+- name: Configure autofs /etc/auto.grid
+  template:
+    src: 'templates/auto.grid.j2'
+    dest: '/etc/auto.grid'
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Configure autofs /etc/auto.master.d/grid.autofs
+  template:
+    src: 'templates/grid.autofs.j2'
+    dest: '/etc/auto.master.d/grid.autofs'
+    owner: root
+    group: root
+    mode: 0644
+
+# Restart autofs
+- name: Restart autofs
+  service:
+    name: 'autofs'
+    state: restarted
+
