@@ -1,6 +1,5 @@
 # This task assumes that cvmfs role is already installed
 
-
 # Install nfs-utils
 - name: Install nfs-utils
   yum:
@@ -16,6 +15,16 @@
     group: root
     mode: 0755
 
+# Create parents directories
+- name: Create parents directories
+  file:
+    path: "{{ item.path | dirname }}"
+    state: directory
+    mode: 0755
+    owner: root
+    group: root
+  loop: '{{ autofs_mounts }}'
+
 # Remove pre-existing directories if exist
 # First check if paths exist as a directories
 - name: Check status of paths
@@ -24,19 +33,13 @@
   loop: '{{ autofs_mounts }}'
   register: path_check
 
-# debug print path_check items
-- name: Debug print path_check items
-  debug:
-    msg: "{{ item }}"
-  loop: '{{ path_check.results }}'
-
 # If some do, remove them
 - name: Remove existing paths
   file:
     path: "{{ item.path }}"
     state: absent
-  when: item.stat.isdir is defined and item.stat.isdir is true
   loop: '{{ path_check.results }}'
+  when: item.stat.isdir is defined and item.stat.isdir is true and item.path is defined
 
 # Create symlinks to /grid-mnt
 - name: Create symlinks to /grid-mnt
